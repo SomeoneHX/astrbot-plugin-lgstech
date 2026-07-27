@@ -20,9 +20,8 @@ class Bot:
     def register(self, handler: Handler):
         self._handlers.append(handler)
 
-    async def send_msg(self, event: OneBotEvent, message: str):
+    async def _send(self, event: OneBotEvent, message: str):
         params = {"message": message}
-        action = "send_msg"
         if event.is_private:
             params["user_id"] = event.user_id
             action = "send_private_msg"
@@ -31,6 +30,12 @@ class Bot:
             params["group_id"] = event.group_id
             action = "send_group_msg"
         await self.client.call_api(action, **params)
+
+    async def send_msg(self, event: OneBotEvent, message: str):
+        await self._send(event, message)
+
+    async def send_image(self, event: OneBotEvent, url: str):
+        await self._send(event, f"[CQ:image,file={url}]")
 
     async def _dispatch(self, event: OneBotEvent):
         for handler in self._handlers:
