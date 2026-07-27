@@ -1,3 +1,4 @@
+import base64
 import logging
 
 import httpx
@@ -31,9 +32,13 @@ async def handler(bot: Bot, event: OneBotEvent):
         logger.info("CPOAuth query: %s", username)
 
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(image_url)
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.get(
+                    image_url,
+                    headers={"User-Agent": "lgs-tool-bot/0.1.0"},
+                )
                 resp.raise_for_status()
+                svg_data = resp.content
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 await bot.send_msg(event, f"用户 {username} 不存在")
@@ -41,11 +46,14 @@ async def handler(bot: Bot, event: OneBotEvent):
                 await bot.send_msg(event, f"请求失败: HTTP {e.response.status_code}")
             return
         except httpx.RequestError as e:
-            await bot.send_msg(event, f"网络错误: {e}")
+            logger.error("CPOAuth network error for %s: %s", username, e)
+            detail = str(e) or type(e).__name__
+            await bot.send_msg(event, f"网络错误: {detail}")
             return
 
-        await bot.send_image(event, image_url)
-        logger.info("CPOAuth card sent for %s", username)
+        b64 = base64.b64encode(svg_data).decode()
+        logger.info("CPOAuth card fetched for %s (%d bytes)", username, len(svg_data))
+        await bot.send_image(event, f"base64://{b64}")
 
 
 def register(bot: Bot):
