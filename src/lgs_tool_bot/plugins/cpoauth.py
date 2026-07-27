@@ -1,6 +1,8 @@
+import asyncio
 import base64
 import logging
 
+import cairosvg
 import httpx
 
 from lgs_tool_bot.bot import Bot
@@ -51,8 +53,10 @@ async def handler(bot: Bot, event: OneBotEvent):
             await bot.send_msg(event, f"网络错误: {detail}")
             return
 
-        b64 = base64.b64encode(svg_data).decode()
-        logger.info("CPOAuth card fetched for %s (%d bytes)", username, len(svg_data))
+        logger.info("CPOAuth card fetched for %s (%d bytes SVG)", username, len(svg_data))
+        png_data = await asyncio.to_thread(cairosvg.svg2png, bytestring=svg_data)
+        b64 = base64.b64encode(png_data).decode()
+        logger.info("Converted to PNG (%d bytes) for %s", len(png_data), username)
         await bot.send_image(event, f"base64://{b64}")
 
 
