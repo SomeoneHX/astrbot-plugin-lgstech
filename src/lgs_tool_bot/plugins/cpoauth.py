@@ -54,6 +54,17 @@ async def handler(bot: Bot, event: OneBotEvent):
             return
 
         logger.info("CPOAuth card fetched for %s (%d bytes SVG)", username, len(svg_data))
+
+        # Inject CJK font fallback so Chinese text renders correctly
+        svg_text = svg_data.decode("utf-8")
+        cjk_fonts = (
+            '"PingFang SC","Heiti SC","Microsoft YaHei",'
+            '"Noto Sans CJK SC","WenQuanYi Micro Hei",sans-serif'
+        )
+        style = f"<style>text,tspan{{font-family:{cjk_fonts}!important}}</style>"
+        svg_text = svg_text.replace(">", f">\n{style}", 1)
+        svg_data = svg_text.encode("utf-8")
+
         png_data = await asyncio.to_thread(cairosvg.svg2png, bytestring=svg_data)
         b64 = base64.b64encode(png_data).decode()
         logger.info("Converted to PNG (%d bytes) for %s", len(png_data), username)
