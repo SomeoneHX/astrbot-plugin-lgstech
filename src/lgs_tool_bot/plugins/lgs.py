@@ -68,6 +68,41 @@ async def handle_user_query(bot: Bot, event: OneBotEvent, uid: str):
     logger.info("LGS user query: %s -> %s", uid, name)
 
 
+async def handle_user_update(bot: Bot, event: OneBotEvent, uid: str):
+    if not uid.isdigit():
+        await bot.send_msg(event, "用法: /lgs update user <数字ID>")
+        return
+
+    url = f"{API_BASE}/user/{uid}/refresh"
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                url,
+                headers={"User-Agent": "Uptime-Kuma"},
+            )
+            resp.raise_for_status()
+            body = resp.json()
+    except httpx.RequestError as e:
+        logger.error("LGS API error: %s", e)
+        await bot.send_msg(event, f"网络错误: {e}")
+        return
+    except httpx.HTTPStatusError as e:
+        await bot.send_msg(event, f"请求失败: HTTP {e.response.status_code}")
+        return
+
+    if body.get("code") != 200:
+        await bot.send_msg(event, f"刷新失败: {body.get('message', '未知错误')}")
+        return
+
+    task_id = body.get("data", {}).get("taskId")
+    if not task_id:
+        await bot.send_msg(event, "刷新失败: 未返回 taskId")
+        return
+
+    await bot.send_msg(event, f"用户 {uid} 资料刷新任务已派发 (taskId: {task_id})")
+    logger.info("LGS user update: %s -> task %s", uid, task_id)
+
+
 async def handler(bot: Bot, event: OneBotEvent):
     text = event.plain_text.strip()
     if not text.startswith("/"):
@@ -83,6 +118,8 @@ async def handler(bot: Bot, event: OneBotEvent):
 
     if sub == "query" and action == "user":
         await handle_user_query(bot, event, arg)
+    elif sub == "update" and action == "user":
+        await handle_user_update(bot, event, arg)
 
 
 def register(bot: Bot):
