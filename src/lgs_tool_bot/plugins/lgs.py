@@ -1,8 +1,10 @@
+import base64
 import logging
 
 import httpx
 
 from lgs_tool_bot.bot import Bot
+from lgs_tool_bot.browser import render_html
 from lgs_tool_bot.onebot.models import OneBotEvent
 
 logger = logging.getLogger(__name__)
@@ -274,11 +276,13 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, raw_arg: str):
             page = int(parts[i + 1])
         elif p == "--full":
             full = True
+        elif p == "--html":
+            html = True
 
     if page < 1:
         page = 1
 
-    if full and not await bot.require_permission(event, 1):
+    if (full or html) and not await bot.require_permission(event, 1):
         return
 
     url = f"{API_BASE}/article/query/{article_id}"
@@ -321,6 +325,18 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, raw_arg: str):
     content = data.get("content", "").strip()
     if not content:
         content = summary if summary else "(无正文)"
+
+    if html:
+        rendered = data.get("renderedContent")
+        if not rendered:
+            await bot.send_msg(event, "该文章没有渲染内容")
+            return
+        await bot.send_msg(event, "正在渲染为图片...")
+        png = await render_html(rendered)
+        b64 = base64.b64encode(png).decode()
+        await bot.send_image(event, f"base64://{b64}")
+        logger.info("LGS article html render: %s (%d bytes)", article_id, len(png))
+        return
 
     if full:
         info_lines = [
@@ -388,11 +404,13 @@ async def handle_paste_query(bot: Bot, event: OneBotEvent, raw_arg: str):
             page = int(parts[i + 1])
         elif p == "--full":
             full = True
+        elif p == "--html":
+            html = True
 
     if page < 1:
         page = 1
 
-    if full and not await bot.require_permission(event, 1):
+    if (full or html) and not await bot.require_permission(event, 1):
         return
 
     url = f"{API_BASE}/paste/query/{paste_id}"
@@ -427,6 +445,18 @@ async def handle_paste_query(bot: Bot, event: OneBotEvent, raw_arg: str):
     updated = data.get("updatedAt", "?")[:10]
 
     content = data.get("content", "").strip() or "(无内容)"
+
+    if html:
+        rendered = data.get("renderedContent")
+        if not rendered:
+            await bot.send_msg(event, "该剪贴板没有渲染内容")
+            return
+        await bot.send_msg(event, "正在渲染为图片...")
+        png = await render_html(rendered)
+        b64 = base64.b64encode(png).decode()
+        await bot.send_image(event, f"base64://{b64}")
+        logger.info("LGS paste html render: %s (%d bytes)", paste_id, len(png))
+        return
 
     if full:
         await bot.send_msg(event, f"剪贴板: {paste_id}\n作者: {author_name}\n更新: {updated}" + ("\n⚠ 已删除" if deleted else ""))

@@ -1,22 +1,11 @@
 import base64
 import logging
 
-from playwright.async_api import async_playwright
-
 from lgs_tool_bot.bot import Bot
+from lgs_tool_bot.browser import get_browser
 from lgs_tool_bot.onebot.models import OneBotEvent
 
 logger = logging.getLogger(__name__)
-
-_browser = None
-
-
-async def get_browser():
-    global _browser
-    if _browser is None:
-        p = await async_playwright().start()
-        _browser = await p.chromium.launch(headless=True)
-    return _browser
 
 
 async def handler(bot: Bot, event: OneBotEvent):
