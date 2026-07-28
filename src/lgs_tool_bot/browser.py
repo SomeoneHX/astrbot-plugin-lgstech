@@ -9,10 +9,12 @@ _browser = None
 _playwright = None
 _cached_css = None
 
-MARKDOWN_CSS_URL = (
+CSS_URLS = [
     "https://raw.githubusercontent.com/laikit-dev/"
-    "luogu-saver/master/packages/frontend/src/styles/markdown.css"
-)
+    "luogu-saver/master/packages/frontend/src/styles/global.css",
+    "https://raw.githubusercontent.com/laikit-dev/"
+    "luogu-saver/master/packages/frontend/src/styles/markdown.css",
+]
 
 
 async def get_browser():
@@ -26,15 +28,17 @@ async def get_browser():
 async def get_markdown_css() -> str:
     global _cached_css
     if _cached_css is None:
-        try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.get(MARKDOWN_CSS_URL)
-                resp.raise_for_status()
-                _cached_css = resp.text
-            logger.info("Markdown CSS fetched (%d bytes)", len(_cached_css))
-        except Exception as e:
-            logger.warning("Failed to fetch markdown CSS: %s", e)
-            _cached_css = ""
+        parts = []
+        for url in CSS_URLS:
+            try:
+                async with httpx.AsyncClient(timeout=10) as client:
+                    resp = await client.get(url)
+                    resp.raise_for_status()
+                    parts.append(resp.text)
+                logger.info("CSS fetched: %s (%d bytes)", url.split("/")[-1], len(parts[-1]))
+            except Exception as e:
+                logger.warning("Failed to fetch CSS %s: %s", url, e)
+        _cached_css = "\n".join(parts)
     return _cached_css
 
 
