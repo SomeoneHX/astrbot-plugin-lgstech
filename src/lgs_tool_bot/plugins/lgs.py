@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 import httpx
@@ -332,25 +331,6 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, raw_arg: str):
     logger.info("LGS article query: %s -> %s (page %d/%d)", article_id, title, page, total_pages)
 
 
-async def fetch_task_status(client: httpx.AsyncClient, label: str, task_id: str) -> str:
-    try:
-        resp = await client.get(
-            f"{API_BASE}/task/query/{task_id}",
-            headers={"User-Agent": "Uptime-Kuma"},
-        )
-        resp.raise_for_status()
-        body = resp.json()
-        if body.get("code") == 200:
-            data = body.get("data") or {}
-            status = STATUS_MAP.get(data.get("status"), f"?({data.get('status')})")
-            info = data.get("info") or ""
-            extra = f" | {info}" if info else ""
-            return f"  {label}: {status}{extra}"
-    except Exception:
-        pass
-    return f"  {label}: ?"
-
-
 async def handle_workflow_query(bot: Bot, event: OneBotEvent, workflow_id: str):
     if not workflow_id:
         await bot.send_msg(event, "用法: /lgs query workflow <工作流ID>")
@@ -383,20 +363,21 @@ async def handle_workflow_query(bot: Bot, event: OneBotEvent, workflow_id: str):
         return
 
     wf_id = data.get("workflowId") or "(无)"
-    root_job = data.get("rootJobId") or "(无)"
-    lines = [f"工作流: {wf_id}", f"根任务: {root_job}"]
+    wf_status = data.get("status") or "(无)"
+    lines = [f"工作流: {wf_id}", f"状态: {wf_status}"]
 
-    task_ids = data.get("taskIds", {}) or {}
-    if task_ids:
-        lines.append("--- 任务 ---")
-        async with httpx.AsyncClient(timeout=15) as client:
-            results = await asyncio.gather(
-                *(fetch_task_status(client, k, v) for k, v in task_ids.items())
-            )
-        lines.extend(results)
+    tasks = data.get("tasks", []) or []
+    if tasks:
+        lines.append(f"--- {len(tasks)} 个子任务 ---")
+        for t in tasks:
+            tname = t.get("taskName") or t.get("type") or "?"
+            tstatus = t.get("status", "?")
+            tinfo = t.get("info") or ""
+            extra = f" | {tinfo}" if tinfo else ""
+            lines.append(f"  {tname}: {tstatus}{extra}")
 
     await bot.send_msg(event, "\n".join(lines))
-    logger.info("LGS workflow query: %s (%d tasks)", workflow_id, len(task_ids))
+    logger.info("LGS workflow query: %s (%d tasks)", workflow_id, len(tasks))
 
 
 async def handler(bot: Bot, event: OneBotEvent):
