@@ -282,7 +282,7 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, raw_arg: str):
     if page < 1:
         page = 1
 
-    if (full or html) and not await bot.require_permission(event, 1):
+    if full and not await bot.require_permission(event, 1):
         return
 
     url = f"{API_BASE}/article/query/{article_id}"
@@ -410,7 +410,7 @@ async def handle_paste_query(bot: Bot, event: OneBotEvent, raw_arg: str):
     if page < 1:
         page = 1
 
-    if (full or html) and not await bot.require_permission(event, 1):
+    if full and not await bot.require_permission(event, 1):
         return
 
     url = f"{API_BASE}/paste/query/{paste_id}"
