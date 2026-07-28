@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import httpx
@@ -253,8 +254,11 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, raw_arg: str):
         await bot.send_msg(event, "\n".join(info_lines))
 
         while content:
-            await bot.send_msg(event, content[:MAX_MSG_LEN])
+            chunk = content[:MAX_MSG_LEN]
             content = content[MAX_MSG_LEN:]
+            await bot.send_msg(event, chunk)
+            if content:
+                await asyncio.sleep(0.3)
         logger.info("LGS article full: %s -> %s", article_id, title)
         return
 
