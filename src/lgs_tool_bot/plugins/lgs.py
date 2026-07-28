@@ -163,6 +163,81 @@ async def handle_task_query(bot: Bot, event: OneBotEvent, task_id: str):
     logger.info("LGS task query: %s -> status=%s", task_id, data.get("status"))
 
 
+MAX_MSG_LEN = 4000
+CATEGORY_MAP = {1: "题解", 2: "分享", 3: "公告", 4: "其它"}
+
+
+async def handle_article_query(bot: Bot, event: OneBotEvent, article_id: str):
+    if not article_id:
+        await bot.send_msg(event, "用法: /lgs query article <文章ID>")
+        return
+
+    url = f"{API_BASE}/article/query/{article_id}"
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                url,
+                headers={"User-Agent": "Uptime-Kuma"},
+            )
+            resp.raise_for_status()
+            body = resp.json()
+    except httpx.RequestError as e:
+        logger.error("LGS API error: %s", e)
+        await bot.send_msg(event, f"网络错误: {e}")
+        return
+    except httpx.HTTPStatusError as e:
+        await bot.send_msg(event, f"请求失败: HTTP {e.response.status_code}")
+        return
+
+    if body.get("code") != 200:
+        await bot.send_msg(event, f"查询失败: {body.get('message', '未知错误')}")
+        return
+
+    data = body.get("data")
+    if not data:
+        await bot.send_msg(event, "文章不存在")
+        return
+
+    title = data.get("title", "?")
+    author = data.get("author", {}) or {}
+    author_name = author.get("name", "?")
+    category = CATEGORY_MAP.get(data.get("category"), "其它")
+    tags = ", ".join(data.get("tags", []) or [])
+    upvote = data.get("upvote", 0)
+    views = data.get("viewCount", 0)
+    deleted = data.get("deleted", False)
+    summary = data.get("summary") or ""
+    created = data.get("createdAt", "?")[:10]
+
+    info_lines = [
+        f"标题: {title}",
+        f"作者: {author_name}",
+        f"分类: {category}",
+        f"点赞: {upvote}  |  浏览: {views}",
+    ]
+    if tags:
+        info_lines.append(f"标签: {tags}")
+    info_lines.append(f"创建: {created}")
+    if deleted:
+        info_lines.append("⚠ 该文章已被删除")
+
+    await bot.send_msg(event, "\n".join(info_lines))
+
+    content = data.get("content", "").strip()
+    if not content:
+        if summary:
+            content = summary
+        else:
+            content = "(无正文)"
+
+    while content:
+        chunk = content[:MAX_MSG_LEN]
+        content = content[MAX_MSG_LEN:]
+        await bot.send_msg(event, chunk)
+
+    logger.info("LGS article query: %s -> %s", article_id, title)
+
+
 async def handler(bot: Bot, event: OneBotEvent):
     text = event.plain_text.strip()
     if not text.startswith("/"):
@@ -182,6 +257,8 @@ async def handler(bot: Bot, event: OneBotEvent):
         await handle_user_update(bot, event, arg)
     elif sub == "query" and action == "task":
         await handle_task_query(bot, event, arg)
+    elif sub == "query" and action == "article":
+        await handle_article_query(bot, event, arg)
 
 
 def register(bot: Bot):
