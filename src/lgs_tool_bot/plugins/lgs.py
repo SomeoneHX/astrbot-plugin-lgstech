@@ -178,19 +178,24 @@ CATEGORY_MAP = {
 
 async def handle_article_query(bot: Bot, event: OneBotEvent, raw_arg: str):
     if not raw_arg:
-        await bot.send_msg(event, "用法: /lgs query article <文章ID> [--page N]")
+        await bot.send_msg(event, "用法: /lgs query article <文章ID> [--page N] [--full]")
         return
 
     parts = raw_arg.split()
     article_id = parts[0]
     page = 1
+    full = False
     for i, p in enumerate(parts):
         if p == "--page" and i + 1 < len(parts) and parts[i + 1].isdigit():
             page = int(parts[i + 1])
-            break
+        elif p == "--full":
+            full = True
 
     if page < 1:
         page = 1
+
+    if full and not await bot.require_permission(event, 1):
+        return
 
     url = f"{API_BASE}/article/query/{article_id}"
     try:
@@ -232,6 +237,26 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, raw_arg: str):
     content = data.get("content", "").strip()
     if not content:
         content = summary if summary else "(无正文)"
+
+    if full:
+        info_lines = [
+            f"标题: {title}",
+            f"作者: {author_name}",
+            f"分类: {category}",
+            f"点赞: {upvote}  |  收藏: {favor}",
+        ]
+        if tags:
+            info_lines.append(f"标签: {tags}")
+        info_lines.append(f"创建: {created}")
+        if deleted:
+            info_lines.append("⚠ 该文章已被删除")
+        await bot.send_msg(event, "\n".join(info_lines))
+
+        while content:
+            await bot.send_msg(event, content[:MAX_MSG_LEN])
+            content = content[MAX_MSG_LEN:]
+        logger.info("LGS article full: %s -> %s", article_id, title)
+        return
 
     total_chars = len(content)
     total_pages = max(1, (total_chars + MAX_MSG_LEN - 1) // MAX_MSG_LEN)
