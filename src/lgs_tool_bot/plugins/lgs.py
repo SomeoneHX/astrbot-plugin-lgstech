@@ -103,6 +103,47 @@ async def handle_user_update(bot: Bot, event: OneBotEvent, uid: str):
     logger.info("LGS user update: %s -> task %s", uid, task_id)
 
 
+async def handle_article_update(bot: Bot, event: OneBotEvent, article_id: str):
+    if not article_id:
+        await bot.send_msg(event, "用法: /lgs update article <文章ID>")
+        return
+
+    url = f"{API_BASE}/workflow/create/template/article-save-pipeline"
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                url,
+                json={"targetId": article_id},
+                headers={"User-Agent": "Uptime-Kuma"},
+            )
+            resp.raise_for_status()
+            body = resp.json()
+    except httpx.RequestError as e:
+        logger.error("LGS API error: %s", e)
+        await bot.send_msg(event, f"网络错误: {e}")
+        return
+    except httpx.HTTPStatusError as e:
+        await bot.send_msg(event, f"请求失败: HTTP {e.response.status_code}")
+        return
+
+    if body.get("code") != 200:
+        await bot.send_msg(event, f"保存失败: {body.get('message', '未知错误')}")
+        return
+
+    data = body.get("data") or {}
+    workflow_id = data.get("workflowId", "?")
+    task_ids = data.get("taskIds", {})
+
+    lines = [f"文章 {article_id} 保存工作流已派发", f"工作流: {workflow_id}"]
+    for label, key in [("保存", "save"), ("摘要", "summary"), ("审核", "censor"), ("向量化", "embedding")]:
+        tid = task_ids.get(key)
+        if tid:
+            lines.append(f"{label}: {tid}")
+
+    await bot.send_msg(event, "\n".join(lines))
+    logger.info("LGS article update: %s -> workflow %s", article_id, workflow_id)
+
+
 STATUS_MAP = {0: "等待中", 1: "运行中", 2: "已完成", 3: "失败"}
 TYPE_MAP = {
     "save": "保存",
@@ -311,6 +352,8 @@ async def handler(bot: Bot, event: OneBotEvent):
         await handle_task_query(bot, event, arg)
     elif sub == "query" and action == "article":
         await handle_article_query(bot, event, arg)
+    elif sub == "update" and action == "article":
+        await handle_article_update(bot, event, arg)
 
 
 def register(bot: Bot):
