@@ -145,6 +145,7 @@ async def handle_article_update(bot: Bot, event: OneBotEvent, article_id: str):
 
 
 STATUS_MAP = {0: "等待中", 1: "运行中", 2: "已完成", 3: "失败"}
+TASK_STATUS_MAP = {"pending": "等待中", "running": "运行中", "completed": "已完成", "failed": "失败", "cancelled": "已取消"}
 TYPE_MAP = {
     "save": "保存",
     "llm": "LLM",
@@ -363,18 +364,18 @@ async def handle_workflow_query(bot: Bot, event: OneBotEvent, workflow_id: str):
         return
 
     wf_id = data.get("workflowId") or "(无)"
-    wf_status = data.get("status") or "(无)"
+    wf_status = TASK_STATUS_MAP.get(data.get("status"), data.get("status", "?"))
     lines = [f"工作流: {wf_id}", f"状态: {wf_status}"]
 
     tasks = data.get("tasks", []) or []
     if tasks:
-        lines.append(f"--- {len(tasks)} 个子任务 ---")
+        done = sum(1 for t in tasks if t.get("status") == "completed")
+        lines.append(f"--- {len(tasks)} 个子任务（{done} 完成） ---")
         for t in tasks:
-            tname = t.get("taskName") or t.get("type") or "?"
-            tstatus = t.get("status", "?")
-            tinfo = t.get("info") or ""
-            extra = f" | {tinfo}" if tinfo else ""
-            lines.append(f"  {tname}: {tstatus}{extra}")
+            tname = t.get("taskName") or "?"
+            tstatus = TASK_STATUS_MAP.get(t.get("status"), t.get("status", "?"))
+            ttype = t.get("type", "")
+            lines.append(f"  [{ttype}] {tname}: {tstatus}")
 
     await bot.send_msg(event, "\n".join(lines))
     logger.info("LGS workflow query: %s (%d tasks)", workflow_id, len(tasks))
