@@ -163,7 +163,7 @@ async def handle_task_query(bot: Bot, event: OneBotEvent, task_id: str):
     logger.info("LGS task query: %s -> status=%s", task_id, data.get("status"))
 
 
-MAX_MSG_LEN = 4000
+MAX_MSG_LEN = 1000
 CATEGORY_MAP = {
     1: "个人纪录",
     2: "题解",
