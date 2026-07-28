@@ -164,7 +164,16 @@ async def handle_task_query(bot: Bot, event: OneBotEvent, task_id: str):
 
 
 MAX_MSG_LEN = 4000
-CATEGORY_MAP = {1: "题解", 2: "分享", 3: "公告", 4: "其它"}
+CATEGORY_MAP = {
+    1: "个人纪录",
+    2: "题解",
+    3: "科技·工程",
+    4: "算法·理论",
+    5: "生活·游记",
+    6: "学习·文化课",
+    7: "休闲·娱乐",
+    8: "闲话",
+}
 
 
 async def handle_article_query(bot: Bot, event: OneBotEvent, article_id: str):
@@ -204,7 +213,7 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, article_id: str):
     category = CATEGORY_MAP.get(data.get("category"), "其它")
     tags = ", ".join(data.get("tags", []) or [])
     upvote = data.get("upvote", 0)
-    views = data.get("viewCount", 0)
+    favor = data.get("favorCount", 0)
     deleted = data.get("deleted", False)
     summary = data.get("summary") or ""
     created = data.get("createdAt", "?")[:10]
@@ -213,7 +222,7 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, article_id: str):
         f"标题: {title}",
         f"作者: {author_name}",
         f"分类: {category}",
-        f"点赞: {upvote}  |  浏览: {views}",
+        f"点赞: {upvote}  |  收藏: {favor}",
     ]
     if tags:
         info_lines.append(f"标签: {tags}")
