@@ -31,13 +31,13 @@ async def get_markdown_css() -> str:
         parts = []
         for url in CSS_URLS:
             try:
-                async with httpx.AsyncClient(timeout=10, verify=False) as client:
+                async with httpx.AsyncClient(timeout=30, verify=False) as client:
                     resp = await client.get(url)
                     resp.raise_for_status()
                     parts.append(resp.text)
                 logger.info("CSS fetched: %s (%d bytes)", url.split("/")[-1], len(parts[-1]))
             except Exception as e:
-                logger.warning("Failed to fetch CSS %s: %s", url, e)
+                logger.warning("Failed to fetch CSS %s: %s", url, f"{type(e).__name__}: {e}")
         _cached_css = "\n".join(parts)
     return _cached_css
 
