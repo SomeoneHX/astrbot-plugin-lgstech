@@ -144,6 +144,47 @@ async def handle_article_update(bot: Bot, event: OneBotEvent, article_id: str):
     logger.info("LGS article update: %s -> workflow %s", article_id, workflow_id)
 
 
+async def handle_paste_update(bot: Bot, event: OneBotEvent, paste_id: str):
+    if not paste_id:
+        await bot.send_msg(event, "用法: /lgs update paste <剪贴板ID>")
+        return
+
+    url = f"{API_BASE}/workflow/create/template/paste-save-pipeline"
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                url,
+                json={"targetId": paste_id},
+                headers={"User-Agent": "Uptime-Kuma"},
+            )
+            resp.raise_for_status()
+            body = resp.json()
+    except httpx.RequestError as e:
+        logger.error("LGS API error: %s", e)
+        await bot.send_msg(event, f"网络错误: {e}")
+        return
+    except httpx.HTTPStatusError as e:
+        await bot.send_msg(event, f"请求失败: HTTP {e.response.status_code}")
+        return
+
+    if body.get("code") != 200:
+        await bot.send_msg(event, f"保存失败: {body.get('message', '未知错误')}")
+        return
+
+    data = body.get("data") or {}
+    workflow_id = data.get("workflowId") or "(无)"
+    task_ids = data.get("taskIds", {}) or {}
+
+    lines = [f"剪贴板 {paste_id} 保存工作流已派发", f"工作流: {workflow_id}"]
+    for label, key in [("保存", "save"), ("摘要", "summary"), ("向量化", "embedding"), ("搜索索引", "update-search-index")]:
+        tid = task_ids.get(key)
+        if tid:
+            lines.append(f"{label}: {tid}")
+
+    await bot.send_msg(event, "\n".join(lines))
+    logger.info("LGS paste update: %s -> workflow %s", paste_id, workflow_id)
+
+
 STATUS_MAP = {0: "等待中", 1: "运行中", 2: "已完成", 3: "失败"}
 TASK_STATUS_MAP = {"pending": "等待中", "running": "运行中", "completed": "已完成", "failed": "失败", "cancelled": "已取消"}
 TYPE_MAP = {
@@ -491,6 +532,8 @@ async def handler(bot: Bot, event: OneBotEvent):
         await handle_article_update(bot, event, arg)
     elif sub == "query" and action == "paste":
         await handle_paste_query(bot, event, arg)
+    elif sub == "update" and action == "paste":
+        await handle_paste_update(bot, event, arg)
     elif sub == "query" and action == "workflow":
         await handle_workflow_query(bot, event, arg)
 
