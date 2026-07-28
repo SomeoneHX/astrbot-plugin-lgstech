@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import httpx
@@ -331,6 +332,25 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, raw_arg: str):
     logger.info("LGS article query: %s -> %s (page %d/%d)", article_id, title, page, total_pages)
 
 
+async def fetch_task_status(client: httpx.AsyncClient, label: str, task_id: str) -> str:
+    try:
+        resp = await client.get(
+            f"{API_BASE}/task/query/{task_id}",
+            headers={"User-Agent": "Uptime-Kuma"},
+        )
+        resp.raise_for_status()
+        body = resp.json()
+        if body.get("code") == 200:
+            data = body.get("data") or {}
+            status = STATUS_MAP.get(data.get("status"), f"?({data.get('status')})")
+            info = data.get("info") or ""
+            extra = f" | {info}" if info else ""
+            return f"  {label}: {status}{extra}"
+    except Exception:
+        pass
+    return f"  {label}: ?"
+
+
 async def handle_workflow_query(bot: Bot, event: OneBotEvent, workflow_id: str):
     if not workflow_id:
         await bot.send_msg(event, "用法: /lgs query workflow <工作流ID>")
@@ -338,7 +358,7 @@ async def handle_workflow_query(bot: Bot, event: OneBotEvent, workflow_id: str):
 
     url = f"{API_BASE}/workflow/query/{workflow_id}"
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.get(
                 url,
                 headers={"User-Agent": "Uptime-Kuma"},
@@ -369,11 +389,14 @@ async def handle_workflow_query(bot: Bot, event: OneBotEvent, workflow_id: str):
     task_ids = data.get("taskIds", {}) or {}
     if task_ids:
         lines.append("--- 任务 ---")
-        for k, v in task_ids.items():
-            lines.append(f"  {k}: {v}")
+        async with httpx.AsyncClient(timeout=15) as client:
+            results = await asyncio.gather(
+                *(fetch_task_status(client, k, v) for k, v in task_ids.items())
+            )
+        lines.extend(results)
 
     await bot.send_msg(event, "\n".join(lines))
-    logger.info("LGS workflow query: %s", workflow_id)
+    logger.info("LGS workflow query: %s (%d tasks)", workflow_id, len(task_ids))
 
 
 async def handler(bot: Bot, event: OneBotEvent):
