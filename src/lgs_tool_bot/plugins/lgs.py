@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 import httpx
@@ -165,6 +164,7 @@ async def handle_task_query(bot: Bot, event: OneBotEvent, task_id: str):
 
 
 MAX_MSG_LEN = 1000
+MAX_FULL_LEN = 4000
 CATEGORY_MAP = {
     1: "个人纪录",
     2: "题解",
@@ -254,11 +254,8 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, raw_arg: str):
         await bot.send_msg(event, "\n".join(info_lines))
 
         while content:
-            chunk = content[:MAX_MSG_LEN]
-            content = content[MAX_MSG_LEN:]
-            await bot.send_msg(event, chunk)
-            if content:
-                await asyncio.sleep(0.3)
+            await bot.send_msg(event, content[:MAX_FULL_LEN])
+            content = content[MAX_FULL_LEN:]
         logger.info("LGS article full: %s -> %s", article_id, title)
         return
 
