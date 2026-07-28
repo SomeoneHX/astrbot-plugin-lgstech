@@ -359,7 +359,8 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, raw_arg: str):
         info_lines.append(f"创建: {created}")
         if deleted:
             info_lines.append("⚠ 该文章已被删除")
-        info_lines.append(f"--- 第 1/{total_pages} 页 ---")
+        if total_pages > 1:
+            info_lines.append(f"--- 第 1/{total_pages} 页 ---")
         await bot.send_msg(event, "\n".join(info_lines))
 
     start = (page - 1) * MAX_MSG_LEN
@@ -444,7 +445,8 @@ async def handle_paste_query(bot: Bot, event: OneBotEvent, raw_arg: str):
         info = f"剪贴板: {paste_id}\n作者: {author_name}\n创建: {created}"
         if deleted:
             info += "\n⚠ 已删除"
-        info += f"\n--- 第 1/{total_pages} 页 ---"
+        if total_pages > 1:
+            info += f"\n--- 第 1/{total_pages} 页 ---"
         await bot.send_msg(event, info)
 
     start = (page - 1) * MAX_MSG_LEN
