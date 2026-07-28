@@ -131,8 +131,8 @@ async def handle_article_update(bot: Bot, event: OneBotEvent, article_id: str):
         return
 
     data = body.get("data") or {}
-    workflow_id = data.get("workflowId", "?")
-    task_ids = data.get("taskIds", {})
+    workflow_id = data.get("workflowId") or "(无)"
+    task_ids = data.get("taskIds", {}) or {}
 
     lines = [f"文章 {article_id} 保存工作流已派发", f"工作流: {workflow_id}"]
     for label, key in [("保存", "save"), ("摘要", "summary"), ("审核", "censor"), ("向量化", "embedding")]:
@@ -362,7 +362,9 @@ async def handle_workflow_query(bot: Bot, event: OneBotEvent, workflow_id: str):
         await bot.send_msg(event, "工作流不存在")
         return
 
-    lines = [f"工作流: {data.get('workflowId', '?')}", f"根任务: {data.get('rootJobId', '?')}"]
+    wf_id = data.get("workflowId") or "(无)"
+    root_job = data.get("rootJobId") or "(无)"
+    lines = [f"工作流: {wf_id}", f"根任务: {root_job}"]
 
     task_ids = data.get("taskIds", {}) or {}
     if task_ids:
