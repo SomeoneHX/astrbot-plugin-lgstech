@@ -331,6 +331,49 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, raw_arg: str):
     logger.info("LGS article query: %s -> %s (page %d/%d)", article_id, title, page, total_pages)
 
 
+async def handle_workflow_query(bot: Bot, event: OneBotEvent, workflow_id: str):
+    if not workflow_id:
+        await bot.send_msg(event, "用法: /lgs query workflow <工作流ID>")
+        return
+
+    url = f"{API_BASE}/workflow/query/{workflow_id}"
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                url,
+                headers={"User-Agent": "Uptime-Kuma"},
+            )
+            resp.raise_for_status()
+            body = resp.json()
+    except httpx.RequestError as e:
+        logger.error("LGS API error: %s", e)
+        await bot.send_msg(event, f"网络错误: {e}")
+        return
+    except httpx.HTTPStatusError as e:
+        await bot.send_msg(event, f"请求失败: HTTP {e.response.status_code}")
+        return
+
+    if body.get("code") != 200:
+        await bot.send_msg(event, f"查询失败: {body.get('message', '未知错误')}")
+        return
+
+    data = body.get("data")
+    if not data:
+        await bot.send_msg(event, "工作流不存在")
+        return
+
+    lines = [f"工作流: {data.get('workflowId', '?')}", f"根任务: {data.get('rootJobId', '?')}"]
+
+    task_ids = data.get("taskIds", {}) or {}
+    if task_ids:
+        lines.append("--- 任务 ---")
+        for k, v in task_ids.items():
+            lines.append(f"  {k}: {v}")
+
+    await bot.send_msg(event, "\n".join(lines))
+    logger.info("LGS workflow query: %s", workflow_id)
+
+
 async def handler(bot: Bot, event: OneBotEvent):
     text = event.plain_text.strip()
     if not text.startswith("/"):
@@ -354,6 +397,8 @@ async def handler(bot: Bot, event: OneBotEvent):
         await handle_article_query(bot, event, arg)
     elif sub == "update" and action == "article":
         await handle_article_update(bot, event, arg)
+    elif sub == "query" and action == "workflow":
+        await handle_workflow_query(bot, event, arg)
 
 
 def register(bot: Bot):
