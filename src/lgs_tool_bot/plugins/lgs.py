@@ -269,7 +269,7 @@ async def handler(bot: Bot, event: OneBotEvent):
     if not text.startswith("/"):
         return
 
-    parts = text[1:].split(maxsplit=4)
+    parts = text[1:].split(maxsplit=3)
     if len(parts) < 1 or parts[0].lower() != "lgs":
         return
 
