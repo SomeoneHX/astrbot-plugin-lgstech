@@ -332,6 +332,91 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, raw_arg: str):
     logger.info("LGS article query: %s -> %s (page %d/%d)", article_id, title, page, total_pages)
 
 
+async def handle_paste_query(bot: Bot, event: OneBotEvent, raw_arg: str):
+    if not raw_arg:
+        await bot.send_msg(event, "用法: /lgs query paste <剪贴板ID> [--page N] [--full]")
+        return
+
+    parts = raw_arg.split()
+    paste_id = parts[0]
+    page = 1
+    full = False
+    for i, p in enumerate(parts):
+        if p == "--page" and i + 1 < len(parts) and parts[i + 1].isdigit():
+            page = int(parts[i + 1])
+        elif p == "--full":
+            full = True
+
+    if page < 1:
+        page = 1
+
+    if full and not await bot.require_permission(event, 1):
+        return
+
+    url = f"{API_BASE}/paste/query/{paste_id}"
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                url,
+                headers={"User-Agent": "Uptime-Kuma"},
+            )
+            resp.raise_for_status()
+            body = resp.json()
+    except httpx.RequestError as e:
+        logger.error("LGS API error: %s", e)
+        await bot.send_msg(event, f"网络错误: {e}")
+        return
+    except httpx.HTTPStatusError as e:
+        await bot.send_msg(event, f"请求失败: HTTP {e.response.status_code}")
+        return
+
+    if body.get("code") != 200:
+        await bot.send_msg(event, f"查询失败: {body.get('message', '未知错误')}")
+        return
+
+    data = body.get("data")
+    if not data:
+        await bot.send_msg(event, "剪贴板不存在")
+        return
+
+    author = data.get("author", {}) or {}
+    author_name = author.get("name", "?")
+    deleted = data.get("deleted", False)
+    created = data.get("createdAt", "?")[:10]
+
+    content = data.get("content", "").strip() or "(无内容)"
+
+    if full:
+        await bot.send_msg(event, f"剪贴板: {paste_id}\n作者: {author_name}\n创建: {created}" + ("\n⚠ 已删除" if deleted else ""))
+        while content:
+            await bot.send_msg(event, content[:MAX_FULL_LEN])
+            content = content[MAX_FULL_LEN:]
+        logger.info("LGS paste full: %s", paste_id)
+        return
+
+    total_chars = len(content)
+    total_pages = max(1, (total_chars + MAX_MSG_LEN - 1) // MAX_MSG_LEN)
+    if page > total_pages:
+        page = total_pages
+
+    if page == 1:
+        info = f"剪贴板: {paste_id}\n作者: {author_name}\n创建: {created}"
+        if deleted:
+            info += "\n⚠ 已删除"
+        info += f"\n--- 第 1/{total_pages} 页 ---"
+        await bot.send_msg(event, info)
+
+    start = (page - 1) * MAX_MSG_LEN
+    chunk = content[start: start + MAX_MSG_LEN]
+    if page < total_pages:
+        chunk += f"\n\n--- 第 {page}/{total_pages} 页 ---\n使用 /lgs query paste {paste_id} --page {page + 1} 获取下一页"
+    else:
+        chunk += f"\n\n--- 第 {page}/{total_pages} 页 --- 全文完 ---"
+
+    await bot.send_msg(event, chunk)
+    logger.info("LGS paste query: %s (page %d/%d)", paste_id, page, total_pages)
+
+
 async def handle_workflow_query(bot: Bot, event: OneBotEvent, workflow_id: str):
     if not workflow_id:
         await bot.send_msg(event, "用法: /lgs query workflow <工作流ID>")
@@ -404,6 +489,8 @@ async def handler(bot: Bot, event: OneBotEvent):
         await handle_article_query(bot, event, arg)
     elif sub == "update" and action == "article":
         await handle_article_update(bot, event, arg)
+    elif sub == "query" and action == "paste":
+        await handle_paste_query(bot, event, arg)
     elif sub == "query" and action == "workflow":
         await handle_workflow_query(bot, event, arg)
 
