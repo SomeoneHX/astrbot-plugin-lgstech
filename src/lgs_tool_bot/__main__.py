@@ -5,7 +5,7 @@ import sys
 from lgs_tool_bot.bot import Bot
 from lgs_tool_bot.config import Config
 from lgs_tool_bot.onebot.client import OneBotClient
-from lgs_tool_bot.plugins import basic, cpoauth, lgs
+from lgs_tool_bot.plugins import basic, cpoauth, lgs, shot
 
 
 def setup_logging(level: int = logging.INFO):
@@ -31,6 +31,7 @@ def main():
     basic.register(bot)
     cpoauth.register(bot)
     lgs.register(bot)
+    shot.register(bot)
 
     try:
         asyncio.run(bot.run())
