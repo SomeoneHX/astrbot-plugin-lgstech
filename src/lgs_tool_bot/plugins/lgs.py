@@ -176,10 +176,21 @@ CATEGORY_MAP = {
 }
 
 
-async def handle_article_query(bot: Bot, event: OneBotEvent, article_id: str):
-    if not article_id:
-        await bot.send_msg(event, "用法: /lgs query article <文章ID>")
+async def handle_article_query(bot: Bot, event: OneBotEvent, raw_arg: str):
+    if not raw_arg:
+        await bot.send_msg(event, "用法: /lgs query article <文章ID> [--page N]")
         return
+
+    parts = raw_arg.split()
+    article_id = parts[0]
+    page = 1
+    for i, p in enumerate(parts):
+        if p == "--page" and i + 1 < len(parts) and parts[i + 1].isdigit():
+            page = int(parts[i + 1])
+            break
+
+    if page < 1:
+        page = 1
 
     url = f"{API_BASE}/article/query/{article_id}"
     try:
@@ -218,33 +229,39 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, article_id: str):
     summary = data.get("summary") or ""
     created = data.get("createdAt", "?")[:10]
 
-    info_lines = [
-        f"标题: {title}",
-        f"作者: {author_name}",
-        f"分类: {category}",
-        f"点赞: {upvote}  |  收藏: {favor}",
-    ]
-    if tags:
-        info_lines.append(f"标签: {tags}")
-    info_lines.append(f"创建: {created}")
-    if deleted:
-        info_lines.append("⚠ 该文章已被删除")
-
-    await bot.send_msg(event, "\n".join(info_lines))
-
     content = data.get("content", "").strip()
     if not content:
-        if summary:
-            content = summary
-        else:
-            content = "(无正文)"
+        content = summary if summary else "(无正文)"
 
-    while content:
-        chunk = content[:MAX_MSG_LEN]
-        content = content[MAX_MSG_LEN:]
-        await bot.send_msg(event, chunk)
+    total_chars = len(content)
+    total_pages = max(1, (total_chars + MAX_MSG_LEN - 1) // MAX_MSG_LEN)
+    if page > total_pages:
+        page = total_pages
 
-    logger.info("LGS article query: %s -> %s", article_id, title)
+    if page == 1:
+        info_lines = [
+            f"标题: {title}",
+            f"作者: {author_name}",
+            f"分类: {category}",
+            f"点赞: {upvote}  |  收藏: {favor}",
+        ]
+        if tags:
+            info_lines.append(f"标签: {tags}")
+        info_lines.append(f"创建: {created}")
+        if deleted:
+            info_lines.append("⚠ 该文章已被删除")
+        info_lines.append(f"--- 第 1/{total_pages} 页 ---")
+        await bot.send_msg(event, "\n".join(info_lines))
+
+    start = (page - 1) * MAX_MSG_LEN
+    chunk = content[start: start + MAX_MSG_LEN]
+    if page < total_pages:
+        chunk += f"\n\n--- 第 {page}/{total_pages} 页 ---\n使用 /lgs query article {article_id} --page {page + 1} 获取下一页"
+    else:
+        chunk += f"\n\n--- 第 {page}/{total_pages} 页 --- 全文完 ---"
+
+    await bot.send_msg(event, chunk)
+    logger.info("LGS article query: %s -> %s (page %d/%d)", article_id, title, page, total_pages)
 
 
 async def handler(bot: Bot, event: OneBotEvent):
