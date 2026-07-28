@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Awaitable, Callable
 
-from lgs_tool_bot.config import BotConfig
+from lgs_tool_bot.config import BotConfig, PermissionConfig
 from lgs_tool_bot.onebot.client import OneBotClient
 from lgs_tool_bot.onebot.models import OneBotEvent
 
@@ -11,11 +11,29 @@ Handler = Callable[["Bot", OneBotEvent], Awaitable[None]]
 
 
 class Bot:
-    def __init__(self, client: OneBotClient, config: BotConfig | None = None):
+    def __init__(
+        self,
+        client: OneBotClient,
+        config: BotConfig | None = None,
+        perm_config: PermissionConfig | None = None,
+    ):
         self.client = client
         self.config = config or BotConfig()
+        self._perm_config = perm_config or PermissionConfig()
         self._handlers: list[Handler] = []
         self._running = False
+
+    def get_user_level(self, user_id: int | None) -> int:
+        if user_id is None:
+            return self._perm_config.default_level
+        return self._perm_config.users.get(str(user_id), self._perm_config.default_level)
+
+    async def require_permission(self, event: OneBotEvent, level: int) -> bool:
+        user_level = self.get_user_level(event.user_id)
+        if user_level >= level:
+            return True
+        await self.send_msg(event, f"权限不足 (需要等级 {level}，你的等级 {user_level})")
+        return False
 
     def register(self, handler: Handler):
         self._handlers.append(handler)

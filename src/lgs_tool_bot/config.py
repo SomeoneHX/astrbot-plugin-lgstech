@@ -16,9 +16,15 @@ class BotConfig(BaseModel):
     name: str = "LGS Tool Bot"
 
 
+class PermissionConfig(BaseModel):
+    default_level: int = 0
+    users: dict[str, int] = {}
+
+
 class Config(BaseModel):
     onebot: OneBotConfig = OneBotConfig()
     bot: BotConfig = BotConfig()
+    permissions: PermissionConfig = PermissionConfig()
 
     @classmethod
     def load(cls, path: str | None = None) -> Self:

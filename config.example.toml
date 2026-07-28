@@ -6,3 +6,9 @@ heartbeat_timeout = 10
 
 [bot]
 name = "LGS Tool Bot"
+
+[permissions]
+default_level = 0
+
+[permissions.users]
+# "用户QQ" = 等级数字

@@ -26,7 +26,7 @@ def main():
         heartbeat_interval=config.onebot.heartbeat_interval,
         heartbeat_timeout=config.onebot.heartbeat_timeout,
     )
-    bot = Bot(client=client, config=config.bot)
+    bot = Bot(client=client, config=config.bot, perm_config=config.permissions)
 
     basic.register(bot)
     cpoauth.register(bot)
