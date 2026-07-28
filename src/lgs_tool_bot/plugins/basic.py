@@ -19,6 +19,8 @@ async def handler(bot: Bot, event: OneBotEvent):
         await bot.send_msg(event, "pong")
         logger.info("Ping from %s", event.user_id)
     elif cmd == "echo":
+        if not await bot.require_permission(event, 1):
+            return
         if not arg:
             await bot.send_msg(event, "用法: /echo <文本>")
         else:
