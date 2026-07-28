@@ -316,7 +316,7 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, raw_arg: str):
     favor = data.get("favorCount", 0)
     deleted = data.get("deleted", False)
     summary = data.get("summary") or ""
-    created = data.get("createdAt", "?")[:10]
+    updated = data.get("updatedAt", "?")[:10]
 
     content = data.get("content", "").strip()
     if not content:
@@ -331,7 +331,7 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, raw_arg: str):
         ]
         if tags:
             info_lines.append(f"标签: {tags}")
-        info_lines.append(f"创建: {created}")
+        info_lines.append(f"更新: {updated}")
         if deleted:
             info_lines.append("⚠ 该文章已被删除")
         await bot.send_msg(event, "\n".join(info_lines))
@@ -356,7 +356,7 @@ async def handle_article_query(bot: Bot, event: OneBotEvent, raw_arg: str):
         ]
         if tags:
             info_lines.append(f"标签: {tags}")
-        info_lines.append(f"创建: {created}")
+        info_lines.append(f"更新: {updated}")
         if deleted:
             info_lines.append("⚠ 该文章已被删除")
         if total_pages > 1:
@@ -424,12 +424,12 @@ async def handle_paste_query(bot: Bot, event: OneBotEvent, raw_arg: str):
     author = data.get("author", {}) or {}
     author_name = author.get("name", "?")
     deleted = data.get("deleted", False)
-    created = data.get("createdAt", "?")[:10]
+    updated = data.get("updatedAt", "?")[:10]
 
     content = data.get("content", "").strip() or "(无内容)"
 
     if full:
-        await bot.send_msg(event, f"剪贴板: {paste_id}\n作者: {author_name}\n创建: {created}" + ("\n⚠ 已删除" if deleted else ""))
+        await bot.send_msg(event, f"剪贴板: {paste_id}\n作者: {author_name}\n更新: {updated}" + ("\n⚠ 已删除" if deleted else ""))
         while content:
             await bot.send_msg(event, content[:MAX_FULL_LEN])
             content = content[MAX_FULL_LEN:]
@@ -442,7 +442,7 @@ async def handle_paste_query(bot: Bot, event: OneBotEvent, raw_arg: str):
         page = total_pages
 
     if page == 1:
-        info = f"剪贴板: {paste_id}\n作者: {author_name}\n创建: {created}"
+        info = f"剪贴板: {paste_id}\n作者: {author_name}\n更新: {updated}"
         if deleted:
             info += "\n⚠ 已删除"
         if total_pages > 1:
