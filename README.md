@@ -2,7 +2,7 @@
 
 基于原 [lgs-tool-bot](https://github.com/SomeoneHX/astrbot-plugin-lgstech)（独立 OneBot v11 机器人）移植而来的 **AstrBot 插件**。
 
-与原项目相比，本插件**去掉了独立机器人框架与基础指令**，改为由 AstrBot 统一负责消息收发与平台适配（OneBot v11 / QQ 等），仅保留洛谷保存站 (luogu.store) 与 CP OAuth 的查询/管理功能：
+与原项目相比，本插件**去掉了独立机器人框架与基础指令**，改为由 AstrBot 统一负责消息收发与平台适配（OneBot v11 / QQ 等），仅保留洛谷保存站 (luogu.me) 与 CP OAuth 的查询/管理功能：
 
 - ❌ 已移除：自建反向 WebSocket 连接、事件循环、`/ping`、`/echo`、`/help`、`/shot` 等基础机器人功能。
 - ✅ 保留并移植：`/lgs`（洛谷保存站查询/刷新）、`/cpoauth`（CP OAuth 用户卡片）。

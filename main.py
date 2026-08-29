@@ -2,7 +2,7 @@
 
 将原有的独立 OneBot 机器人 (lgs-tool-bot) 移植为 AstrBot Star 插件。
 去掉了原项目中的基础机器人框架（自建 WS 连接、事件循环、/ping、/echo、/help、
-/shot 等），仅保留洛谷保存站 (luogu.store) 与 CP OAuth 的查询/管理功能，
+/shot 等），仅保留洛谷保存站 (luogu.me) 与 CP OAuth 的查询/管理功能，
 由 AstrBot 负责消息收发与平台适配。
 """
 
@@ -31,7 +31,7 @@ DEFAULT_CPOAUTH_API_BASE = "https://www.cpoauth.com/api/users"
 @register(
     "astrbot_plugin_lgstech",
     "SomeoneHX",
-    "洛谷保存站 (luogu.store) 查询与管理插件：用户/文章/剪贴板/任务/工作流查询与刷新派发，以及 CP OAuth 用户卡片。",
+    "洛谷保存站 (luogu.me) 查询与管理插件：用户/文章/剪贴板/任务/工作流查询与刷新派发，以及 CP OAuth 用户卡片。",
     "1.0.0",
     "https://github.com/SomeoneHX/astrbot-plugin-lgstech",
 )

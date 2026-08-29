@@ -1,4 +1,4 @@
-"""洛谷保存站 (luogu.store) API integration, ported from the original
+"""洛谷保存站 (luogu.me) API integration, ported from the original
 ``lgs_tool_bot.plugins.lgs`` module.
 
 Every ``handle_*`` coroutine is an async generator that yields either a plain

@@ -1,6 +1,6 @@
 """HTML -> PNG rendering using Playwright (headless Chromium).
 
-The luogu.store API no longer returns pre-rendered HTML, so the plugin builds
+The luogu.me API no longer returns pre-rendered HTML, so the plugin builds
 the document itself from the structured article / paste data and styles it with
 a self-contained generic CSS (no external CSS downloads).
 
