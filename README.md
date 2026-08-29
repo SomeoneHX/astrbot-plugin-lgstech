@@ -21,7 +21,7 @@
 | `/lgs query workflow <ID>` | 查询工作流及子任务状态 | 所有人 |
 | `/cpoauth query <用户名>` | 查询 CP OAuth 用户卡片（SVG→PNG 图片） | 所有人 |
 
-> 文章/剪贴板支持 `--html` 将渲染内容截图返回（依赖 Playwright）。
+> 文章/剪贴板支持 `--html` 将渲染内容截图返回。HTML 由插件在内部由 markdown 拼接，CSS 为内置通用样式，**支持 LaTeX（KaTeX）公式渲染**（所有 KaTeX 资源已打包进 `core/katex/`，无需联网下载，渲染时也不需要外网）。
 
 ## 安装
 
@@ -29,6 +29,7 @@
 
 ```
 httpx
+markdown
 cairosvg
 playwright   # 需要执行 playwright install chromium 以启用 --html 渲染
 ```
@@ -54,10 +55,11 @@ playwright   # 需要执行 playwright install chromium 以启用 --html 渲染
 └── core/                # 与 AstrBot 解耦的业务逻辑
     ├── lgs.py           # 洛谷保存站 API 集成
     ├── cpoauth.py       # CP OAuth 卡片（SVG→PNG）
-    └── browser.py       # HTML→PNG 渲染（Playwright）
+    ├── browser.py       # HTML→PNG 渲染（Playwright + KaTeX）
+    └── katex/           # 本地 KaTeX 资源（CSS / JS / 字体），用于 LaTeX 渲染
 ```
 
 ## 许可与署名
 
 - 原 `lgs-tool-bot` 采用 MIT 许可，本移植版本沿用，见 `LICENSE`。
-- `core/browser.py` 中的 Markdown CSS 取自 [laikit-dev/luogu-saver](https://github.com/laikit-dev/luogu-saver)（洛谷保存站前端样式）。
+- LaTeX 渲染由 [KaTeX](https://katex.org/) 提供，版本 0.16.11，相关 CSS/JS/字体随插件打包于 `core/katex/`，不依赖任何运行时网络资源。

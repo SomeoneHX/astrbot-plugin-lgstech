@@ -1,7 +1,7 @@
 name: astrbot_plugin_lgstech
 desc: 洛谷保存站 (luogu.store) 查询与管理插件：用户/文章/剪贴板/任务/工作流查询与刷新派发，以及 CP OAuth 用户卡片查询。
 author: SomeoneHX
-version: 1.0.0
+version: 1.2.0
 repo: https://github.com/SomeoneHX/astrbot-plugin-lgstech
 tags:
   - 洛谷

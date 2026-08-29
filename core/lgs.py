@@ -13,7 +13,7 @@ from typing import Union
 import httpx
 
 from . import ImageResult
-from .browser import render_html
+from .browser import build_page, md_to_html, render_html
 
 logger = logging.getLogger(__name__)
 
@@ -301,12 +301,16 @@ async def handle_article_query(api_base: str, raw_arg: str, is_admin: bool) -> A
         content = summary if summary else "(无正文)"
 
     if html:
-        rendered = data.get("renderedContent")
-        if not rendered:
-            yield "该文章没有渲染内容"
-            return
         yield "正在渲染为图片..."
-        png = await render_html(rendered)
+        body = md_to_html(content)
+        meta = f"{author_name} · {category}"
+        if tags:
+            meta += f" · 标签: {tags}"
+        meta += f" · 点赞 {upvote} | 收藏 {favor} | 更新 {updated}"
+        if deleted:
+            meta += " · 已删除"
+        doc = build_page(title=title, meta=meta, body_html=body)
+        png = await render_html(doc)
         yield ImageResult(png)
         logger.info("LGS article html render: %s (%d bytes)", article_id, len(png))
         return
@@ -348,8 +352,6 @@ async def handle_article_query(api_base: str, raw_arg: str, is_admin: bool) -> A
         info_lines.append(f"更新: {updated}")
         if deleted:
             info_lines.append("⚠ 该文章已被删除")
-        if total_pages > 1:
-            info_lines.append(f"--- 第 1/{total_pages} 页 ---")
         yield "\n".join(info_lines)
 
     start = (page - 1) * MAX_MSG_LEN
@@ -409,12 +411,13 @@ async def handle_paste_query(api_base: str, raw_arg: str, is_admin: bool) -> Asy
     content = data.get("content", "").strip() or "(无内容)"
 
     if html:
-        rendered = data.get("renderedContent")
-        if not rendered:
-            yield "该剪贴板没有渲染内容"
-            return
         yield "正在渲染为图片..."
-        png = await render_html(rendered)
+        body = md_to_html(content)
+        meta = f"{author_name} · 更新 {updated}"
+        if deleted:
+            meta += " · 已删除"
+        doc = build_page(title=f"剪贴板 {paste_id}", meta=meta, body_html=body)
+        png = await render_html(doc)
         yield ImageResult(png)
         logger.info("LGS paste html render: %s (%d bytes)", paste_id, len(png))
         return
@@ -436,8 +439,6 @@ async def handle_paste_query(api_base: str, raw_arg: str, is_admin: bool) -> Asy
         info = f"剪贴板: {paste_id}\n作者: {author_name}\n更新: {updated}"
         if deleted:
             info += "\n⚠ 已删除"
-        if total_pages > 1:
-            info += f"\n--- 第 1/{total_pages} 页 ---"
         yield info
 
     start = (page - 1) * MAX_MSG_LEN
