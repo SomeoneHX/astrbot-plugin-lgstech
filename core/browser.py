@@ -1,3 +1,9 @@
+"""HTML -> PNG rendering using Playwright (headless Chromium).
+
+Ported from the original ``lgs_tool_bot.browser`` module. Uses the luogu-saver
+markdown CSS so rendered articles/pastes look like the real site.
+"""
+
 import logging
 
 import httpx
@@ -36,7 +42,7 @@ async def get_markdown_css() -> str:
                     resp.raise_for_status()
                     parts.append(resp.text)
                 logger.info("CSS fetched: %s (%d bytes)", url.split("/")[-1], len(parts[-1]))
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - best-effort, rendering still works without CSS
                 logger.warning("Failed to fetch CSS %s: %s", url, f"{type(e).__name__}: {e}")
         _cached_css = "\n".join(parts)
     return _cached_css

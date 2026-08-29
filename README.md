@@ -1,121 +1,63 @@
-# LGS Tool Bot
+# LGS 工具箱（AstrBot 插件）
 
-基于 Python 3.12 的 OneBot v11 协议机器人，通过反向 WebSocket 连接 Napcat 等 OneBot 实现。
+基于原 [lgs-tool-bot](https://github.com/SomeoneHX/astrbot-plugin-lgstech)（独立 OneBot v11 机器人）移植而来的 **AstrBot 插件**。
 
-## 功能
+与原项目相比，本插件**去掉了独立机器人框架与基础指令**，改为由 AstrBot 统一负责消息收发与平台适配（OneBot v11 / QQ 等），仅保留洛谷保存站 (luogu.store) 与 CP OAuth 的查询/管理功能：
 
-| 命令 | 说明 | 权限 |
+- ❌ 已移除：自建反向 WebSocket 连接、事件循环、`/ping`、`/echo`、`/help`、`/shot` 等基础机器人功能。
+- ✅ 保留并移植：`/lgs`（洛谷保存站查询/刷新）、`/cpoauth`（CP OAuth 用户卡片）。
+
+## 指令
+
+| 指令 | 说明 | 权限 |
 |------|------|------|
-| `/ping` | 连通性测试 | 0 |
-| `/echo <文本>` | 复读文本 | 1 |
-| `/help` | 显示帮助 | 0 |
-| `/cpoauth query <用户名>` | 查询 CP OAuth 用户卡片 | 0 |
-| `/lgs query user <ID>` | 查询洛谷用户资料 | 0 |
-| `/lgs update user <ID>` | 派发用户资料刷新任务 | 0 |
-| `/lgs query article <ID> [--page N] [--full]` | 查询文章（支持分页/全文） | 0 / 1 (`--full`) |
-| `/lgs update article <ID>` | 派发文章保存工作流 | 0 |
-| `/lgs query paste <ID> [--page N] [--full]` | 查询剪贴板（支持分页/全文） | 0 / 1 (`--full`) |
-| `/lgs update paste <ID>` | 派发剪贴板保存工作流 | 0 |
-| `/lgs query task <ID>` | 查询任务状态 | 0 |
-| `/lgs query workflow <ID>` | 查询工作流及子任务状态 | 0 |
+| `/lgs query user <ID>` | 查询洛谷用户资料 | 所有人 |
+| `/lgs update user <ID>` | 派发用户资料刷新任务 | 所有人 |
+| `/lgs query article <ID> [--page N] [--full]` | 查询文章（支持分页；`--full` 输出全文） | `--full` 需管理员 |
+| `/lgs update article <ID>` | 派发文章保存工作流 | 所有人 |
+| `/lgs query paste <ID> [--page N] [--full]` | 查询剪贴板（支持分页；`--full` 输出全文） | `--full` 需管理员 |
+| `/lgs update paste <ID>` | 派发剪贴板保存工作流 | 所有人 |
+| `/lgs query task <ID>` | 查询任务状态 | 所有人 |
+| `/lgs query workflow <ID>` | 查询工作流及子任务状态 | 所有人 |
+| `/cpoauth query <用户名>` | 查询 CP OAuth 用户卡片（SVG→PNG 图片） | 所有人 |
 
-## 快速开始
+> 文章/剪贴板支持 `--html` 将渲染内容截图返回（依赖 Playwright）。
 
-```bash
-# 克隆后进入项目目录
-cd lgs-tool-bot
+## 安装
 
-# 安装依赖
-uv sync
+将本仓库放入 AstrBot 的 `data/plugins/` 目录后，于 WebUI 插件管理重载即可。依赖由 `requirements.txt` 自动安装：
 
-# 复制配置并修改
-cp config.example.toml config.toml
-
-# 启动
-uv run lgs-tool-bot
+```
+httpx
+cairosvg
+playwright   # 需要执行 playwright install chromium 以启用 --html 渲染
 ```
 
 ## 配置
 
-```toml
-[onebot]
-ws_url = "ws://127.0.0.1:6700"     # OneBot 服务端反向 WS 地址
-access_token = ""                    # 访问令牌
-heartbeat_interval = 30              # WebSocket ping 间隔（秒）
-heartbeat_timeout = 10               # WebSocket ping 超时（秒）
+在 WebUI 插件配置面板中可修改（对应 `_conf_schema.json`）：
 
-[bot]
-name = "LGS Tool Bot"                # 机器人名称
+| 配置项 | 说明 | 默认 |
+|--------|------|------|
+| `api_base` | 洛谷保存站 API 根地址 | `https://api.luogu.me` |
+| `cpoauth_api_base` | CP OAuth 用户卡片 API 根地址 | `https://www.cpoauth.com/api/users` |
+| `admin_users` | 允许使用 `--full` 等长输出指令的 QQ 号列表 | `[]` |
 
-[permissions]
-default_level = 0                     # 未指定用户的默认等级
-
-[permissions.users]
-# "QQ号" = 等级
-```
-
-## 权限系统
-
-- **0**: 所有人可用
-- **1+**: 需在 `permissions.users` 中配置
-
-在插件中检查权限：
-
-```python
-if not await bot.require_permission(event, level=1):
-    return
-```
-
-内置方法：
-
-```python
-bot.get_user_level(user_id)           # 获取用户等级
-bot.require_permission(event, level)  # 检查并自动回复
-```
-
-## 项目结构
+## 目录结构
 
 ```
-src/lgs_tool_bot/
-├── __init__.py        # 版本号
-├── __main__.py        # 入口
-├── config.py          # TOML 配置加载
-├── bot.py             # Bot 核心（事件循环 + 插件调度 + 消息发送）
-├── onebot/
-│   ├── models.py      # OneBot v11 事件模型
-│   └── client.py      # 反向 WebSocket 客户端
-└── plugins/
-    ├── basic.py       # /ping /echo /help
-    ├── cpoauth.py     # /cpoauth query（SVG → PNG 卡片）
-    └── lgs.py         # 洛谷保存站 API 集成
+.
+├── metadata.yaml        # 插件元数据（AstrBot 必需）
+├── _conf_schema.json     # 插件配置 schema
+├── requirements.txt      # 第三方依赖
+├── main.py              # 插件入口（Star + @command）
+└── core/                # 与 AstrBot 解耦的业务逻辑
+    ├── lgs.py           # 洛谷保存站 API 集成
+    ├── cpoauth.py       # CP OAuth 卡片（SVG→PNG）
+    └── browser.py       # HTML→PNG 渲染（Playwright）
 ```
 
-## 扩展插件
+## 许可与署名
 
-1. 在 `plugins/` 下新建文件
-2. 实现 `async def handler(bot, event)` 和 `def register(bot)`
-3. 在 `__main__.py` 中注册
-
-Bot 提供的方法：
-
-```python
-bot.send_msg(event, "文本")         # 发送消息
-bot.send_image(event, "url")        # 发送图片（CQ 码）
-bot.client.call_api("action", **params)  # 调用任意 OneBot API
-```
-
-事件对象常用属性：
-
-```python
-event.plain_text    # 纯文本消息
-event.user_id       # 发送者 QQ
-event.group_id      # 群号
-event.is_private    # 是否私聊
-event.is_group      # 是否群聊
-event.is_self       # 是否机器人自己发出
-event.self_id       # 机器人自身 QQ
-```
-
-## 许可
-
-[MIT](LICENSE)
+- 原 `lgs-tool-bot` 采用 MIT 许可，本移植版本沿用，见 `LICENSE`。
+- `core/browser.py` 中的 Markdown CSS 取自 [laikit-dev/luogu-saver](https://github.com/laikit-dev/luogu-saver)（洛谷保存站前端样式）。
